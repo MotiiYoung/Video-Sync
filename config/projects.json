@@ -1,0 +1,49 @@
+{
+  "projects": {
+    "SEP_UOL_UT": {
+      "name": "SEP+UOL User Test",
+      "description": "SEP+UOL UT 유저 리서치 프로젝트",
+      "observation_sheet": {
+        "spreadsheet_id": "1iglGl92ePjQ5EUWa9brrBCHp24AP_OJHhgOSAx6WbxA",
+        "user_tab_pattern": "User(\\d+)",
+        "data_structure": {
+          "field_column": "E",
+          "value_column": "F"
+        }
+      },
+      "payment_details": {
+        "spreadsheet_id": "1BeJXx01MrayqJM7x6bAnMg2cqb13nDQN-5l0JlKCpI8",
+        "sheet_name": "Payment Details",
+        "user_column_pattern": "User (\\d+)",
+        "master_sheet_folder_id": "1tMs8qSnbQwVWAlt7B2fctCDWz6Z5dIaO"
+      },
+      "field_mapping": {
+        "Name": "Name",
+        "Phone Number": "Phone Number",
+        "User ID": "User ID",
+        "PAN Number": {
+          "target_field": "Pan Number",
+          "source_keywords": [
+            "introduction",
+            "repeat"
+          ]
+        }
+      },
+      "calendar_keywords": [
+        "UT",
+        "User Research",
+        "SEP",
+        "UOL"
+      ],
+      "video_sync": {
+        "source_folder_id": "1-GsFCTXEo8QGJhPqNzERVGLVfm5p3-7g",
+        "target_base_folder_id": "1Ypmm7Z4AvvPjiW2PWjI3aD8vPsr-e0Zw",
+        "recording_folder_pattern": "[Recording] {project_name} + Recorded Videos"
+      },
+      "video_folder_id": "1e0Ludhfe7jGmRU71WnDihhIw4wOFG7Fa",
+      "created_at": "2026-05-15",
+      "last_synced": "2026-05-16T14:37:36.971090"
+    }
+  },
+  "default_project": "SEP_UOL_UT"
+}
