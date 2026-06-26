@@ -280,6 +280,33 @@ Video-Sync/
 └── .git/
 ```
 
+### 핵심 함수 (video_sync.py)
+
+| 함수 | 역할 |
+|------|------|
+| `search_meet_recordings()` | Meeting Recordings 폴더에서 녹화본 검색 |
+| `find_or_create_recording_folder()` | [Recording] 폴더 찾거나 생성 |
+| `move_recordings()` | 녹화본을 프로젝트 폴더로 이동 |
+| `sync_video_links()` | Observation Sheet에 HYPERLINK 추가 |
+| `extract_session_number()` | 파일명에서 세션 번호 추출 (1st, 2nd, ...) |
+
+### 핵심 함수 (calendar_monitor.py)
+
+| 함수 | 역할 |
+|------|------|
+| `get_calendar_events()` | Google Calendar에서 일정 조회 |
+| `is_user_research_event()` | calendar_keywords로 유저 리서치 일정 판별 |
+| `process_events()` | 종료된 이벤트 감지 → Video Sync 트리거 |
+| `trigger_video_sync()` | subprocess로 video_sync.py full 실행 |
+
+### 상수 (calendar_monitor.py)
+
+```python
+CHECK_INTERVAL = 300   # 5분마다 체크
+RECORDING_BUFFER = 7200  # 2시간 대기 (녹화 생성까지)
+IST = ZoneInfo("Asia/Kolkata")  # 인도 시간대
+```
+
 ---
 
 ## 📝 변경 이력
@@ -347,7 +374,30 @@ uv run python scripts/main.py --scopes drive sheets calendar
 | 프로젝트 | 경로 | 역할 |
 |----------|------|------|
 | Payment-Sync | `~/Projects/github/Payment-Sync` | 결제 정보 동기화 |
-| Recruiting | `~/Projects/github/Recruiting` | 참가자 모집, Goal 관리 |
+| Recruiting | `~/Projects/github/Recruiting` | 참가자 모집, Goal 관리, Dashboard |
+
+### Payment-Sync와 Video-Sync 차이점
+
+| 항목 | Payment-Sync | Video-Sync |
+|------|--------------|------------|
+| Quick Share 트리거 | 마지막 유저만 (user >= goal) | 매 Quick Sharing |
+| 실행 횟수 | 프로젝트당 1회 | 세션마다 실행 |
+| 중복 방지 | 플래그 파일 | synced_users 상태 |
+| 대기 시간 | 즉시 | 2시간 버퍼 (녹화 생성 대기) |
+
+### Recruiting Dashboard 연동
+
+```python
+# recruiting-server.py의 check_and_trigger_video_sync()
+# 프로젝트 완료 시 (completed >= target) Full Video Sync 실행
+subprocess.run(["uv", "run", "python", "scripts/video_sync.py", "full", "--project", project_id])
+```
+
+### sk-young-kim 슬랙봇
+
+- **실행 위치**: 서버 (AWS 등)
+- **용도**: "Video Sync 해줘" 명령 처리
+- **TODO**: Calendar/Quick Share Monitor도 봇에 연동하면 로컬 실행 불필요
 
 ---
 
@@ -369,5 +419,37 @@ video sync 해줘
 ### 다음 세션 시작 시
 
 ```bash
+# 전체 맥락 로드
 cat /Users/young.kim/Projects/github/Video-Sync/memory.md
+
+# 또는 Claude Code에서
+# "Video-Sync 폴더의 memory.md 읽어줘"
 ```
+
+---
+
+## 🔄 세션 복구 체크리스트
+
+새 세션 시작 시 다음을 확인:
+
+1. **memory.md 읽기**: 전체 맥락 로드
+2. **CLAUDE.md 읽기**: 프로젝트 규칙 확인
+3. **데몬 상태 확인**:
+   ```bash
+   ps aux | grep monitor
+   uv run python scripts/calendar_monitor.py status
+   uv run python scripts/quick_share_monitor.py status
+   ```
+4. **로그 확인** (문제 발생 시):
+   ```bash
+   tail -20 logs/calendar_monitor.log
+   tail -20 logs/quick_share_monitor.log
+   ```
+
+---
+
+## 📅 마지막 업데이트
+
+- **날짜**: 2026-06-26
+- **변경 사항**: 4단계 하이브리드 트리거, Calendar Monitor (2시간 버퍼), 폴더 자동 생성
+- **다음 TODO**: sk-young-kim 봇 서버 배포 시 Monitor 연동
