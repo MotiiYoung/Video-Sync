@@ -137,41 +137,108 @@ def refresh_token(token_data):
     return token_data
 
 
-def search_meet_recordings(access_token, project_keywords):
-    """Search for Google Meet recordings in user's Drive."""
-    # Google Meet recordings are typically named like "Meeting Recording" or have specific patterns
-    # They're also in a "Meet Recordings" folder
-
-    queries = []
-
-    # Search for recordings with project keywords
-    for keyword in project_keywords:
-        queries.append(f"name contains '{keyword}' and mimeType='video/mp4'")
-
-    # Also search in Meet Recordings folder
-    queries.append("name contains 'Recording' and mimeType='video/mp4'")
+def search_meet_recordings(access_token, source_folder_id, project_keywords):
+    """Search for Google Meet recordings in Meeting Recordings folder."""
+    # Meeting Recordings folder: 1-GsFCTXEo8QGJhPqNzERVGLVfm5p3-7g
 
     all_files = []
     seen_ids = set()
 
-    for query in queries:
+    # First, get all files from the source folder (Meeting Recordings)
+    if source_folder_id:
         url = "https://www.googleapis.com/drive/v3/files"
         params = {
-            "q": query,
+            "q": f"'{source_folder_id}' in parents and mimeType='video/mp4'",
             "fields": "files(id,name,mimeType,webViewLink,parents,createdTime)",
             "orderBy": "createdTime desc",
-            "pageSize": 50,
+            "pageSize": 100,
         }
 
         response = requests.get(url, headers={"Authorization": f"Bearer {access_token}"}, params=params)
 
         if response.status_code == 200:
             for f in response.json().get("files", []):
-                if f["id"] not in seen_ids:
-                    seen_ids.add(f["id"])
-                    all_files.append(f)
+                # Filter by project keywords
+                name_lower = f["name"].lower()
+                if any(kw.lower() in name_lower for kw in project_keywords):
+                    if f["id"] not in seen_ids:
+                        seen_ids.add(f["id"])
+                        all_files.append(f)
+
+    # Fallback: search entire Drive for recordings with keywords
+    if not all_files:
+        for keyword in project_keywords:
+            url = "https://www.googleapis.com/drive/v3/files"
+            params = {
+                "q": f"name contains '{keyword}' and mimeType='video/mp4'",
+                "fields": "files(id,name,mimeType,webViewLink,parents,createdTime)",
+                "orderBy": "createdTime desc",
+                "pageSize": 50,
+            }
+
+            response = requests.get(url, headers={"Authorization": f"Bearer {access_token}"}, params=params)
+
+            if response.status_code == 200:
+                for f in response.json().get("files", []):
+                    if f["id"] not in seen_ids:
+                        seen_ids.add(f["id"])
+                        all_files.append(f)
 
     return all_files
+
+
+def create_folder(access_token, folder_name, parent_folder_id):
+    """Create a new folder in Google Drive."""
+    url = "https://www.googleapis.com/drive/v3/files"
+
+    metadata = {
+        "name": folder_name,
+        "mimeType": "application/vnd.google-apps.folder",
+        "parents": [parent_folder_id]
+    }
+
+    response = requests.post(
+        url,
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        },
+        json=metadata
+    )
+
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print(f"Failed to create folder: {response.text}")
+        return None
+
+
+def find_or_create_recording_folder(access_token, project_name, project_folder_id):
+    """Find or create [Recording] folder in project folder."""
+    recording_folder_name = f"[Recording] {project_name}"
+
+    # Search for existing folder
+    url = "https://www.googleapis.com/drive/v3/files"
+    params = {
+        "q": f"'{project_folder_id}' in parents and name='{recording_folder_name}' and mimeType='application/vnd.google-apps.folder'",
+        "fields": "files(id,name)",
+    }
+
+    response = requests.get(url, headers={"Authorization": f"Bearer {access_token}"}, params=params)
+
+    if response.status_code == 200:
+        files = response.json().get("files", [])
+        if files:
+            print(f"  Found existing folder: {recording_folder_name}")
+            return files[0]["id"]
+
+    # Create new folder
+    print(f"  Creating folder: {recording_folder_name}")
+    result = create_folder(access_token, recording_folder_name, project_folder_id)
+    if result:
+        return result["id"]
+
+    return None
 
 
 def get_drive_files(access_token, folder_id):
@@ -274,30 +341,46 @@ def find_and_move_command(args):
         return 1
 
     project = config["projects"][project_id]
+    project_name = project.get("name", project_id)
 
     print(f"\n{'='*60}")
-    print(f"Find & Move Recordings - {project['name']}")
+    print(f"Find & Move Recordings - {project_name}")
     print(f"{'='*60}\n")
-
-    video_folder_id = project.get("video_folder_id")
-    if not video_folder_id:
-        print("Error: No video folder configured for this project.")
-        print("Add 'video_folder_id' to config/projects.json")
-        return 1
 
     access_token = load_token()
 
-    # Search for recordings
+    # Get source folder (Meeting Recordings)
+    video_sync_config = project.get("video_sync", {})
+    source_folder_id = video_sync_config.get("source_folder_id", "1-GsFCTXEo8QGJhPqNzERVGLVfm5p3-7g")
+    project_folder_id = video_sync_config.get("target_base_folder_id") or project.get("project_folder_id")
+
+    print(f"Source folder (Meeting Recordings): {source_folder_id}")
+
+    # Search for recordings in Meeting Recordings folder
     keywords = project.get("calendar_keywords", ["UT", "User Research"])
     print(f"Searching for recordings with keywords: {keywords}")
 
-    recordings = search_meet_recordings(access_token, keywords)
+    recordings = search_meet_recordings(access_token, source_folder_id, keywords)
 
     if not recordings:
         print("No recordings found.")
         return 0
 
     print(f"Found {len(recordings)} potential recordings:\n")
+
+    # Find or create Recording folder
+    video_folder_id = project.get("video_folder_id")
+
+    if not video_folder_id and project_folder_id:
+        print(f"\nFinding/creating Recording folder in project folder...")
+        video_folder_id = find_or_create_recording_folder(access_token, project_name, project_folder_id)
+        if not video_folder_id:
+            print("Error: Could not create Recording folder.")
+            return 1
+    elif not video_folder_id:
+        print("Error: No video_folder_id or project_folder_id configured.")
+        print("Add 'video_folder_id' or 'video_sync.target_base_folder_id' to config/projects.json")
+        return 1
 
     # Get files already in target folder
     existing_files = get_drive_files(access_token, video_folder_id)

@@ -11,8 +11,11 @@ Video Sync는 Google Meet 녹화본을 프로젝트 폴더로 이동하고 Obser
 
 **핵심 플로우:**
 ```
-Google Meet 녹화 (개인 드라이브)
-  → find: 프로젝트 관련 녹화본 찾기 + 이동
+Google Meet 녹화 종료
+  → (시간 소요) → Meeting Recordings 폴더에 생성
+  → find: 프로젝트 키워드로 녹화본 감지
+  → [Recording] {project_name} 폴더 자동 생성 (없으면)
+  → 녹화본 이동
   → sync: Observation Sheet에 HYPERLINK 추가
   → Slack 알림 전송
 ```
@@ -155,9 +158,22 @@ User 5 Quick Sharing 감지
 
 | 폴더 | ID | 용도 |
 |------|-----|------|
-| Video Source (개인) | `1-GsFCTXEo8QGJhPqNzERVGLVfm5p3-7g` | Meet 녹화본 저장 |
-| Target Base | `1Ypmm7Z4AvvPjiW2PWjI3aD8vPsr-e0Zw` | 프로젝트 폴더 |
-| SEP+UOL Recording | `1e0Ludhfe7jGmRU71WnDihhIw4wOFG7Fa` | 프로젝트별 영상 폴더 |
+| Meeting Recordings (소스) | `1-GsFCTXEo8QGJhPqNzERVGLVfm5p3-7g` | Meet 녹화본 자동 저장 |
+| SEP+UOL UT 프로젝트 폴더 | `15d1UmoFMedga140UTALhYA8odApshqkg` | 프로젝트 폴더 |
+| [Recording] SEP+UOL UT | `1e0Ludhfe7jGmRU71WnDihhIw4wOFG7Fa` | 녹화본 저장 (자동 생성) |
+
+### 폴더 자동 생성
+
+```
+Meeting Recordings 폴더 (source_folder_id)
+  ↓ 녹화본 감지
+프로젝트 폴더 (project_folder_id)
+  └── [Recording] {project_name} ← 자동 생성
+        └── 녹화본 이동
+```
+
+- `video_folder_id`가 설정되어 있으면 해당 폴더 사용
+- 없으면 `project_folder_id` 내에 `[Recording] {project_name}` 폴더 자동 생성
 
 ---
 

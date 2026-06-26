@@ -38,8 +38,9 @@
       "video_sync": {
         "source_folder_id": "1-GsFCTXEo8QGJhPqNzERVGLVfm5p3-7g",
         "target_base_folder_id": "1Ypmm7Z4AvvPjiW2PWjI3aD8vPsr-e0Zw",
-        "recording_folder_pattern": "[Recording] {project_name} + Recorded Videos"
+        "recording_folder_pattern": "[Recording] {project_name}"
       },
+      "project_folder_id": "15d1UmoFMedga140UTALhYA8odApshqkg",
       "video_folder_id": "1e0Ludhfe7jGmRU71WnDihhIw4wOFG7Fa",
       "created_at": "2026-05-15",
       "last_synced": "2026-05-16T14:37:36.971090"
