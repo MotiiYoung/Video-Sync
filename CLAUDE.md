@@ -59,16 +59,36 @@ video sync 해줘
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  1. Recruiting Dashboard (로컬 서버 실행 중) - Primary       │
+│  1. Recruiting Dashboard (프로젝트 완료 시)                   │
 │     → completed >= target 감지 → Full Video Sync 실행        │
 ├─────────────────────────────────────────────────────────────┤
-│  2. Quick Share Monitor (로컬 서버 꺼짐) - Backup            │
+│  2. Calendar Monitor (세션 종료 시)                          │
+│     → Google Calendar에서 유저 리서치 일정 감지               │
+│     → 미팅 종료 + 10분 버퍼 후 → Video Sync 실행              │
+├─────────────────────────────────────────────────────────────┤
+│  3. Quick Share Monitor (Quick Sharing 감지 시)              │
 │     → #all_user_research 채널 모니터링 (C056LP1M5P1)         │
 │     → Quick Sharing 감지 시마다 Video Sync 실행              │
 ├─────────────────────────────────────────────────────────────┤
-│  3. 수동 Fallback                                           │
+│  4. 수동 Fallback                                           │
 │     → "Video Sync 해줘" or CLI 명령                          │
 └─────────────────────────────────────────────────────────────┘
+```
+
+### Calendar Monitor 명령어
+
+```bash
+# 데몬 시작 (백그라운드)
+./scripts/run_calendar_monitor.sh
+
+# 데몬 중지
+./scripts/stop_calendar_monitor.sh
+
+# 단일 체크 (테스트)
+uv run python scripts/calendar_monitor.py check
+
+# 상태 확인
+uv run python scripts/calendar_monitor.py status
 ```
 
 ### Quick Share Monitor 명령어

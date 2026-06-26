@@ -24,22 +24,40 @@ Google Meet 녹화 종료
 
 ## 🚀 자동 트리거 시스템 (Hybrid)
 
-### 3단계 자동 트리거
+### 4단계 자동 트리거
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  1. Recruiting Dashboard (로컬 서버 실행 중) - Primary       │
+│  1. Recruiting Dashboard (프로젝트 완료 시)                   │
 │     → completed >= target 감지 → Full Video Sync 실행        │
 │     (프로젝트 완료 시 전체 녹화본 일괄 처리)                   │
 ├─────────────────────────────────────────────────────────────┤
-│  2. Quick Share Monitor (로컬 서버 꺼짐) - Backup            │
+│  2. Calendar Monitor (세션 종료 시)                          │
+│     → Google Calendar에서 유저 리서치 일정 감지               │
+│     → 미팅 종료 + 10분 버퍼 후 → Video Sync 실행              │
+│     (녹화 파일 생성 대기 후 자동 이동)                         │
+├─────────────────────────────────────────────────────────────┤
+│  3. Quick Share Monitor (Quick Sharing 감지 시)              │
 │     → #all_user_research 채널 모니터링 (C056LP1M5P1)         │
 │     → Quick Sharing 감지 시마다 Video Sync 실행              │
 │     (세션별 실시간 처리)                                      │
 ├─────────────────────────────────────────────────────────────┤
-│  3. 수동 Fallback                                           │
+│  4. 수동 Fallback                                           │
 │     → "Video Sync 해줘" or CLI 명령                          │
 └─────────────────────────────────────────────────────────────┘
+```
+
+### Calendar Monitor 플로우
+
+```
+Google Calendar 유저 리서치 일정
+  ↓ 미팅 종료 감지
+  ↓ 10분 버퍼 (녹화 파일 생성 대기)
+Meeting Recordings 폴더 확인
+  ↓ 새 녹화본 감지
+[Recording] {project_name} 폴더로 이동
+  ↓
+Observation Sheet에 링크 추가
 ```
 
 ### Payment Sync와 차이점
@@ -49,6 +67,24 @@ Google Meet 녹화 종료
 | 트리거 조건 | 마지막 유저 (user >= goal) | 매 Quick Sharing |
 | 실행 시점 | 프로젝트 완료 후 1회 | 세션마다 실행 |
 | 중복 방지 | 플래그 파일 | synced_users 상태 |
+
+### Calendar Monitor 명령어
+
+```bash
+cd /Users/young.kim/Projects/github/Video-Sync
+
+# 데몬 시작 (백그라운드)
+./scripts/run_calendar_monitor.sh
+
+# 데몬 중지
+./scripts/stop_calendar_monitor.sh
+
+# 단일 체크 (테스트)
+uv run python scripts/calendar_monitor.py check
+
+# 상태 확인
+uv run python scripts/calendar_monitor.py status
+```
 
 ### Quick Share Monitor 명령어
 
