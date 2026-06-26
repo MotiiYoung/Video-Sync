@@ -311,7 +311,18 @@ IST = ZoneInfo("Asia/Kolkata")  # 인도 시간대
 
 ## 📝 변경 이력
 
-### 2026-06-26 (최신)
+### 2026-06-27 (최신)
+
+1. **sk-young-kim 슬랙봇 연동**
+   - Video-Sync 스킬 생성: `~/.sidekick/skills/video-sync/`
+   - Payment-Sync 스킬 확인: `~/.sidekick/skills/payment-sync/`
+   - 트리거: "video sync 해줘", "payment sync 해줘"
+
+2. **스킬 구조**
+   - `SKILL.md`: 스킬 설명 및 트리거 키워드
+   - `scripts/main.py`: CLI 래퍼 (subprocess로 실제 스크립트 호출)
+
+### 2026-06-26
 
 1. **4단계 하이브리드 트리거 시스템 구현**
    - Recruiting Dashboard: 프로젝트 완료 시 Full Sync (최종 점검)
@@ -393,11 +404,43 @@ uv run python scripts/main.py --scopes drive sheets calendar
 subprocess.run(["uv", "run", "python", "scripts/video_sync.py", "full", "--project", project_id])
 ```
 
-### sk-young-kim 슬랙봇
+### sk-young-kim 슬랙봇 연동 (완료)
 
-- **실행 위치**: 서버 (AWS 등)
-- **용도**: "Video Sync 해줘" 명령 처리
-- **TODO**: Calendar/Quick Share Monitor도 봇에 연동하면 로컬 실행 불필요
+**실행 위치**: 로컬 (Socket Mode) - `~/.sidekick/sidekick/_platform/apps/slack-bot-v2/`
+
+**스킬 위치**:
+```
+~/.sidekick/skills/
+├── video-sync/
+│   ├── SKILL.md
+│   └── scripts/main.py
+└── payment-sync/
+    ├── SKILL.md
+    └── scripts/main.py
+```
+
+**Video Sync 트리거 키워드**:
+- `video sync 해줘`
+- `비디오 싱크`
+- `녹화 동기화`
+- `/video-sync`
+
+**Payment Sync 트리거 키워드**:
+- `payment sync 해줘`
+- `페이먼트 싱크`
+- `결제 동기화`
+- `/payment-sync`
+
+**스킬 → CLI 매핑**:
+```
+sk-young-kim DM: "video sync 해줘"
+  ↓
+~/.sidekick/skills/video-sync/scripts/main.py
+  ↓
+subprocess: uv run python scripts/video_sync.py full
+  ↓
+결과를 Slack DM으로 응답
+```
 
 ---
 
@@ -409,12 +452,14 @@ subprocess.run(["uv", "run", "python", "scripts/video_sync.py", "full", "--proje
 |------|-----|
 | SEP+UOL Observation | `1iglGl92ePjQ5EUWa9brrBCHp24AP_OJHhgOSAx6WbxA` |
 
-### Slack 명령어
+### Slack 명령어 (sk-young-kim 봇 DM)
 
-```
-video sync 해줘
-비디오 싱크
-```
+| 명령어 | 동작 |
+|--------|------|
+| `video sync 해줘` | 녹화본 이동 + 링크 동기화 |
+| `비디오 싱크` | 위와 동일 |
+| `payment sync 해줘` | 결제 정보 동기화 |
+| `페이먼트 싱크` | 위와 동일 |
 
 ### 다음 세션 시작 시
 
@@ -450,6 +495,7 @@ cat /Users/young.kim/Projects/github/Video-Sync/memory.md
 
 ## 📅 마지막 업데이트
 
-- **날짜**: 2026-06-26
-- **변경 사항**: 4단계 하이브리드 트리거, Calendar Monitor (2시간 버퍼), 폴더 자동 생성
-- **다음 TODO**: sk-young-kim 봇 서버 배포 시 Monitor 연동
+- **날짜**: 2026-06-27
+- **변경 사항**: sk-young-kim 슬랙봇 연동 (video-sync, payment-sync 스킬)
+- **완료**: Video Sync + Payment Sync 슬랙봇 트리거
+- **다음 TODO**: Calendar/Quick Share Monitor 서버 배포 시 자동화
