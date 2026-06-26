@@ -30,7 +30,7 @@ import requests
 
 # Configuration
 CHECK_INTERVAL = 300  # 5 minutes
-RECORDING_BUFFER = 600  # 10 minutes - wait for recording to be processed after meeting ends
+RECORDING_BUFFER = 7200  # 2 hours - wait for recording to be processed after meeting ends
 IST = ZoneInfo("Asia/Kolkata")
 
 SCRIPT_DIR = Path(__file__).parent
