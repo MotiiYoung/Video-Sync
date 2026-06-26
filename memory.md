@@ -12,11 +12,11 @@ Video Sync는 Google Meet 녹화본을 프로젝트 폴더로 이동하고 Obser
 **핵심 플로우:**
 ```
 Google Meet 녹화 종료
-  → (시간 소요) → Meeting Recordings 폴더에 생성
-  → find: 프로젝트 키워드로 녹화본 감지
+  → (2시간 대기) → Meeting Recordings 폴더에 생성
+  → Video Sync 감지 (Calendar Monitor / Quick Share Monitor)
   → [Recording] {project_name} 폴더 자동 생성 (없으면)
   → 녹화본 이동
-  → sync: Observation Sheet에 HYPERLINK 추가
+  → Observation Sheet에 HYPERLINK 추가
   → Slack 알림 전송
 ```
 
@@ -30,11 +30,11 @@ Google Meet 녹화 종료
 ┌─────────────────────────────────────────────────────────────┐
 │  1. Recruiting Dashboard (프로젝트 완료 시)                   │
 │     → completed >= target 감지 → Full Video Sync 실행        │
-│     (프로젝트 완료 시 전체 녹화본 일괄 처리)                   │
+│     (프로젝트 완료 시 전체 녹화본 일괄 처리 - 최종 점검)        │
 ├─────────────────────────────────────────────────────────────┤
 │  2. Calendar Monitor (세션 종료 시)                          │
 │     → Google Calendar에서 유저 리서치 일정 감지               │
-│     → 미팅 종료 + 10분 버퍼 후 → Video Sync 실행              │
+│     → 미팅 종료 + 2시간 버퍼 후 → Video Sync 실행             │
 │     (녹화 파일 생성 대기 후 자동 이동)                         │
 ├─────────────────────────────────────────────────────────────┤
 │  3. Quick Share Monitor (Quick Sharing 감지 시)              │
@@ -47,26 +47,26 @@ Google Meet 녹화 종료
 └─────────────────────────────────────────────────────────────┘
 ```
 
+### ⚠️ 로컬 실행 필요
+
+현재 모든 트리거는 **로컬 실행 필요**:
+- Calendar Monitor, Quick Share Monitor: 로컬 데몬
+- Recruiting Dashboard: 로컬 서버 (localhost:8080)
+
+**TODO:** Slack Bot (sk-young-kim) 서버 배포 시 연동 예정
+
 ### Calendar Monitor 플로우
 
 ```
 Google Calendar 유저 리서치 일정
   ↓ 미팅 종료 감지
-  ↓ 10분 버퍼 (녹화 파일 생성 대기)
+  ↓ 2시간 버퍼 (RECORDING_BUFFER = 7200초)
 Meeting Recordings 폴더 확인
   ↓ 새 녹화본 감지
 [Recording] {project_name} 폴더로 이동
   ↓
 Observation Sheet에 링크 추가
 ```
-
-### Payment Sync와 차이점
-
-| 항목 | Payment Sync | Video Sync |
-|------|--------------|------------|
-| 트리거 조건 | 마지막 유저 (user >= goal) | 매 Quick Sharing |
-| 실행 시점 | 프로젝트 완료 후 1회 | 세션마다 실행 |
-| 중복 방지 | 플래그 파일 | synced_users 상태 |
 
 ### Calendar Monitor 명령어
 
@@ -135,37 +135,6 @@ uv run python scripts/video_sync.py full --project SEP_UOL_UT
 
 ---
 
-## 📊 워크플로우
-
-```
-[개인 Google Drive]              [프로젝트 폴더]              [Observation Sheet]
-Meet 녹화본 자동 저장    →    find 명령으로 이동    →    sync 명령으로 링크 추가
-                              (full 명령 = 전체 자동화)
-```
-
-1. Google Meet에서 녹화 → 개인 드라이브에 저장됨
-2. `video_sync.py find` → 프로젝트 관련 녹화본 찾아서 프로젝트 폴더로 이동
-3. `video_sync.py sync` → 각 User 탭에 HYPERLINK로 링크 추가
-4. `video_sync.py full` → 위 2+3 자동 실행
-
----
-
-## 🎬 파일명 파싱
-
-녹화본 파일명에서 세션 번호 추출:
-```
-12th SEP+UOL UT - 2026/05/17 11:04 IST – Recording
-  ↓
-세션 번호: 12 → User12 탭에 링크 추가
-```
-
-**패턴:**
-```python
-r'(\d+)(?:st|nd|rd|th)'  # 1st, 2nd, 3rd, 10th 등
-```
-
----
-
 ## 🔔 Slack 알림
 
 ### 채널
@@ -183,6 +152,13 @@ r'(\d+)(?:st|nd|rd|th)'  # 1st, 2nd, 3rd, 10th 등
 • 프로젝트: SEP+UOL UT
 • 이동된 영상: 12개
 • 폴더: [Recording] SEP+UOL UT (클릭 가능 링크)
+```
+
+**Calendar Monitor 감지 시:**
+```
+📅 Calendar Monitor
+User 5 세션 종료 감지
+→ SEP+UOL UT Video Sync 실행
 ```
 
 **Quick Share Monitor 감지 시:**
@@ -217,6 +193,22 @@ Meeting Recordings 폴더 (source_folder_id)
 
 ---
 
+## 🎬 파일명 파싱
+
+녹화본 파일명에서 세션 번호 추출:
+```
+12th SEP+UOL UT - 2026/05/17 11:04 IST – Recording
+  ↓
+세션 번호: 12 → User12 탭에 링크 추가
+```
+
+**패턴:**
+```python
+r'(\d+)(?:st|nd|rd|th)'  # 1st, 2nd, 3rd, 10th 등
+```
+
+---
+
 ## 📋 프로젝트 설정
 
 ### projects.json 구조
@@ -227,9 +219,15 @@ Meeting Recordings 폴더 (source_folder_id)
     "SEP_UOL_UT": {
       "name": "SEP+UOL UT",
       "observation_sheet": {
-        "spreadsheet_id": "...",
+        "spreadsheet_id": "1iglGl92ePjQ5EUWa9brrBCHp24AP_OJHhgOSAx6WbxA",
         "user_tab_pattern": "User(\\d+)"
       },
+      "video_sync": {
+        "source_folder_id": "1-GsFCTXEo8QGJhPqNzERVGLVfm5p3-7g",
+        "target_base_folder_id": "1Ypmm7Z4AvvPjiW2PWjI3aD8vPsr-e0Zw",
+        "recording_folder_pattern": "[Recording] {project_name}"
+      },
+      "project_folder_id": "15d1UmoFMedga140UTALhYA8odApshqkg",
       "video_folder_id": "1e0Ludhfe7jGmRU71WnDihhIw4wOFG7Fa",
       "calendar_keywords": ["UT", "SEP", "UOL"]
     }
@@ -252,16 +250,7 @@ Meeting Recordings 폴더 (source_folder_id)
 
 - `https://www.googleapis.com/auth/drive`
 - `https://www.googleapis.com/auth/spreadsheets`
-
-### 토큰 갱신
-
-자동 갱신됨 (refresh_token 사용)
-
-수동 갱신:
-```bash
-cd ~/.sidekick/sidekick/.claude/skills/google-oauth-token
-uv run python scripts/main.py --scopes drive sheets
-```
+- `https://www.googleapis.com/auth/calendar.readonly`
 
 ---
 
@@ -275,14 +264,19 @@ Video-Sync/
 │   └── projects.json            # 프로젝트 설정
 ├── scripts/
 │   ├── video_sync.py            # VideoSync 메인
+│   ├── calendar_monitor.py      # Calendar 모니터 데몬 (2시간 버퍼)
 │   ├── quick_share_monitor.py   # Quick Share 모니터 데몬
-│   ├── run_quick_share_monitor.sh   # 데몬 시작
-│   ├── stop_quick_share_monitor.sh  # 데몬 중지
+│   ├── run_calendar_monitor.sh
+│   ├── stop_calendar_monitor.sh
+│   ├── run_quick_share_monitor.sh
+│   ├── stop_quick_share_monitor.sh
 │   └── auto_auth.py             # OAuth 인증
 ├── data/
-│   └── video_sync_state.json    # 모니터 상태 (synced_users)
+│   ├── calendar_monitor_state.json
+│   └── video_sync_state.json
 ├── logs/
-│   └── quick_share_monitor.log  # 모니터 로그
+│   ├── calendar_monitor.log
+│   └── quick_share_monitor.log
 └── .git/
 ```
 
@@ -292,25 +286,36 @@ Video-Sync/
 
 ### 2026-06-26 (최신)
 
-1. **Quick Share Monitor 추가**
-   - `scripts/quick_share_monitor.py` - 데몬 스크립트
-   - 매 Quick Sharing 감지 시 Video Sync 실행
-   - `synced_users` 상태로 중복 방지
+1. **4단계 하이브리드 트리거 시스템 구현**
+   - Recruiting Dashboard: 프로젝트 완료 시 Full Sync (최종 점검)
+   - Calendar Monitor: 세션 종료 + 2시간 후 실행
+   - Quick Share Monitor: Quick Sharing 감지 시 즉시 실행
+   - 수동: "Video Sync 해줘"
 
-2. **Slack 메시지 형식 변경**
-   - 폴더명: `Recording` → `[Recording] {project_name}`
-   - 프로젝트명: config의 `name` 필드 그대로 사용
+2. **Calendar Monitor 추가**
+   - `RECORDING_BUFFER = 7200` (2시간)
+   - Google Calendar에서 유저 리서치 일정 감지
 
-3. **프로젝트명 수정**
+3. **폴더 자동 생성 기능**
+   - Meeting Recordings에서 녹화본 감지
+   - `[Recording] {project_name}` 폴더 자동 생성
+
+4. **Slack 알림 형식**
+   - 🎬 Video Sync 완료
+   - 📅 Calendar Monitor
+   - 🎬 Quick Share Monitor
+
+5. **프로젝트명 수정**
    - `SEP+UOL User Test` → `SEP+UOL UT`
 
 ---
 
 ## ⚠️ 주의사항
 
-1. **토큰 만료**: API 호출 전 토큰 자동 갱신됨
-2. **synced_users 리셋**: 새 프로젝트 시작 전 `reset` 명령 실행
-3. **파일명 패턴**: `{N}st/nd/rd/th` 형식이어야 세션 번호 추출 가능
+1. **로컬 실행 필요**: 모든 데몬/서버가 로컬에서 실행되어야 함
+2. **토큰 만료**: API 호출 전 토큰 자동 갱신됨
+3. **2시간 버퍼**: Calendar Monitor는 미팅 종료 후 2시간 대기
+4. **synced_users 리셋**: 새 프로젝트 시작 전 `reset` 명령 실행
 
 ---
 
@@ -320,21 +325,20 @@ Video-Sync/
 
 ```bash
 cd ~/.sidekick/sidekick/.claude/skills/google-oauth-token
-uv run python scripts/main.py --scopes drive sheets
+uv run python scripts/main.py --scopes drive sheets calendar
 ```
 
 ### Video Sync 안 됨
 
-1. Quick Share Monitor 로그 확인: `tail -f logs/quick_share_monitor.log`
-2. 상태 확인: `uv run python scripts/quick_share_monitor.py status`
-3. synced_users에 이미 있는지 확인
-4. 필요시 리셋: `uv run python scripts/quick_share_monitor.py reset`
+1. 데몬 실행 확인: `ps aux | grep monitor`
+2. 로그 확인: `tail -f logs/calendar_monitor.log`
+3. 상태 확인: `uv run python scripts/calendar_monitor.py status`
 
 ### 녹화본 못 찾음
 
-1. 파일명에 프로젝트 키워드 포함되어 있는지 확인
-2. `calendar_keywords` 설정 확인
-3. 개인 드라이브에 녹화본 있는지 확인
+1. Meeting Recordings 폴더에 파일 있는지 확인
+2. 파일명에 프로젝트 키워드 포함 확인
+3. `calendar_keywords` 설정 확인
 
 ---
 
@@ -343,7 +347,7 @@ uv run python scripts/main.py --scopes drive sheets
 | 프로젝트 | 경로 | 역할 |
 |----------|------|------|
 | Payment-Sync | `~/Projects/github/Payment-Sync` | 결제 정보 동기화 |
-| Recruiting | `~/Projects/github/Recruiting` | 참가자 모집 |
+| Recruiting | `~/Projects/github/Recruiting` | 참가자 모집, Goal 관리 |
 
 ---
 
@@ -360,4 +364,10 @@ uv run python scripts/main.py --scopes drive sheets
 ```
 video sync 해줘
 비디오 싱크
+```
+
+### 다음 세션 시작 시
+
+```bash
+cat /Users/young.kim/Projects/github/Video-Sync/memory.md
 ```
