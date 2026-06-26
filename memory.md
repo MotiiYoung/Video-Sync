@@ -425,6 +425,11 @@ subprocess.run(["uv", "run", "python", "scripts/video_sync.py", "full", "--proje
 - `녹화 동기화`
 - `/video-sync`
 
+**특정 프로젝트 지정**:
+- `SEP_UOL_UT video sync 해줘`
+- `video sync 해줘 SEP_UOL_UT`
+- `SEP_UOL_UT 비디오 싱크`
+
 **Payment Sync 트리거 키워드**:
 - `payment sync 해줘`
 - `페이먼트 싱크`
