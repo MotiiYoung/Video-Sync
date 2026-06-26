@@ -47,7 +47,7 @@ def send_slack_notification(project_name, video_count, folder_url):
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": f"🎬 *Video Sync 완료*\n• 프로젝트: {project_name}\n• 이동된 영상: {video_count}개\n• 폴더: <{folder_url}|Recording>"
+                    "text": f"🎬 *Video Sync 완료*\n• 프로젝트: {project_name}\n• 이동된 영상: {video_count}개\n• 폴더: <{folder_url}|[Recording] {project_name}>"
                 }
             }
         ],

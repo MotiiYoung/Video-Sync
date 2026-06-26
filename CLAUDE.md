@@ -55,6 +55,45 @@ video sync 해줘
 
 ---
 
+## 자동 트리거 (Quick Share Monitor)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  1. Quick Share Monitor - Primary                           │
+│     → #all_user_research 채널 모니터링 (C056LP1M5P1)         │
+│     → Quick Sharing 감지 시마다 Video Sync 실행              │
+├─────────────────────────────────────────────────────────────┤
+│  2. 수동 Fallback                                           │
+│     → "Video Sync 해줘" or CLI 명령                          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Quick Share Monitor 명령어
+
+```bash
+# 데몬 시작 (백그라운드)
+./scripts/run_quick_share_monitor.sh
+
+# 데몬 중지
+./scripts/stop_quick_share_monitor.sh
+
+# 단일 체크 (테스트)
+uv run python scripts/quick_share_monitor.py check
+
+# 상태 확인
+uv run python scripts/quick_share_monitor.py status
+
+# 상태 리셋 (새 프로젝트 시작 시)
+uv run python scripts/quick_share_monitor.py reset
+```
+
+### Payment Sync와 차이점
+
+- **Payment Sync**: 마지막 유저 Quick Sharing 감지 → 1회 실행
+- **Video Sync**: 매 Quick Sharing 감지 → 매번 실행
+
+---
+
 ## 워크플로우
 
 ```
@@ -88,11 +127,19 @@ r'(\d+)(?:st|nd|rd|th)'  # 1st, 2nd, 3rd, 10th 등
 
 ## Slack 알림 형식
 
+**Video Sync 완료:**
 ```
 🎬 Video Sync 완료
-• 프로젝트: SEP+UOL User Test
+• 프로젝트: SEP+UOL UT
 • 이동된 영상: 12개
-• 폴더: Recording (클릭 가능 링크)
+• 폴더: [Recording] SEP+UOL UT (클릭 가능 링크)
+```
+
+**Quick Share Monitor 감지 시:**
+```
+🎬 Quick Share Monitor
+User 5 Quick Sharing 감지
+→ SEP+UOL UT Video Sync 실행
 ```
 
 ---
@@ -111,10 +158,12 @@ r'(\d+)(?:st|nd|rd|th)'  # 1st, 2nd, 3rd, 10th 등
 
 ```json
 {
-  "video_sync": {
-    "source_folder_id": "1-GsFCTXEo8QGJhPqNzERVGLVfm5p3-7g",
-    "target_base_folder_id": "1Ypmm7Z4AvvPjiW2PWjI3aD8vPsr-e0Zw",
-    "recording_folder_pattern": "[Recording] {project_name} + Recorded Videos"
+  "projects": {
+    "SEP_UOL_UT": {
+      "name": "SEP+UOL UT",
+      "video_folder_id": "1e0Ludhfe7jGmRU71WnDihhIw4wOFG7Fa",
+      "calendar_keywords": ["UT", "SEP", "UOL"]
+    }
   }
 }
 ```
@@ -137,11 +186,18 @@ OAuth 토큰 위치:
 ```
 Video-Sync/
 ├── CLAUDE.md              # 이 파일
+├── memory.md              # 맥락 유지
 ├── config/
 │   └── projects.json      # 프로젝트 설정
 ├── scripts/
 │   ├── video_sync.py      # VideoSync 메인
+│   ├── quick_share_monitor.py   # Quick Share 모니터
+│   ├── run_quick_share_monitor.sh
+│   ├── stop_quick_share_monitor.sh
 │   └── auto_auth.py       # OAuth 인증
+├── data/
+│   └── video_sync_state.json
+├── logs/
 └── .git/
 ```
 
@@ -153,3 +209,12 @@ Video-Sync/
 |----------|------|------|
 | Payment-Sync | `~/Projects/github/Payment-Sync` | 결제 정보 동기화 |
 | Recruiting | `~/Projects/github/Recruiting` | 참가자 모집 |
+
+---
+
+## Slack 채널
+
+| 채널 | ID | 용도 |
+|------|-----|------|
+| Video 알림 | `C0BBQNNAEV8` | Sync 완료 알림 |
+| all_user_research | `C056LP1M5P1` | Quick Share 모니터링 |
