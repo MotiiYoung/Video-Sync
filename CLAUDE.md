@@ -55,15 +55,18 @@ video sync 해줘
 
 ---
 
-## 자동 트리거 (Quick Share Monitor)
+## 자동 트리거 (Hybrid System)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  1. Quick Share Monitor - Primary                           │
+│  1. Recruiting Dashboard (로컬 서버 실행 중) - Primary       │
+│     → completed >= target 감지 → Full Video Sync 실행        │
+├─────────────────────────────────────────────────────────────┤
+│  2. Quick Share Monitor (로컬 서버 꺼짐) - Backup            │
 │     → #all_user_research 채널 모니터링 (C056LP1M5P1)         │
 │     → Quick Sharing 감지 시마다 Video Sync 실행              │
 ├─────────────────────────────────────────────────────────────┤
-│  2. 수동 Fallback                                           │
+│  3. 수동 Fallback                                           │
 │     → "Video Sync 해줘" or CLI 명령                          │
 └─────────────────────────────────────────────────────────────┘
 ```
