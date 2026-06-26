@@ -5,6 +5,7 @@ Video Sync - Find Google Meet recordings, move to project folder, and sync links
 
 import argparse
 import json
+import os
 import re
 import sys
 from datetime import datetime, timedelta
@@ -12,6 +13,62 @@ from pathlib import Path
 from urllib.parse import quote
 
 import requests
+
+# Slack notification config
+SLACK_CHANNEL = "C0BBQNNAEV8"
+SLACK_TOKEN_FILE = Path.home() / ".sidekick/.env"
+
+
+def get_slack_token():
+    """Get Slack bot token from environment or file."""
+    token = os.environ.get("SLACK_BOT_TOKEN")
+    if token:
+        return token
+
+    if SLACK_TOKEN_FILE.exists():
+        with open(SLACK_TOKEN_FILE) as f:
+            for line in f:
+                if line.startswith("SLACK_BOT_TOKEN="):
+                    return line.split("=", 1)[1].strip().strip('"\'')
+    return None
+
+
+def send_slack_notification(project_name, video_count, folder_url):
+    """Send completion notification to Slack."""
+    token = get_slack_token()
+    if not token:
+        print("  Slack token not found, skipping notification")
+        return False
+
+    message = {
+        "channel": SLACK_CHANNEL,
+        "blocks": [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"🎬 *Video Sync 완료*\n• 프로젝트: {project_name}\n• 이동된 영상: {video_count}개\n• 폴더: <{folder_url}|Recording>"
+                }
+            }
+        ],
+        "text": f"Video Sync 완료 - {project_name}"
+    }
+
+    response = requests.post(
+        "https://slack.com/api/chat.postMessage",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        },
+        json=message
+    )
+
+    if response.status_code == 200 and response.json().get("ok"):
+        print("  Slack notification sent")
+        return True
+    else:
+        print(f"  Slack notification failed: {response.text}")
+        return False
 
 # Paths
 SCRIPT_DIR = Path(__file__).parent
@@ -441,6 +498,10 @@ def list_videos(args):
 
 def full_sync(args):
     """Full sync: Find recordings, move to folder, then sync links."""
+    config = load_config()
+    project_id = args.project or config.get("default_project")
+    project = config["projects"].get(project_id, {})
+
     print(f"\n{'='*60}")
     print("Full Video Sync")
     print(f"{'='*60}")
@@ -457,6 +518,13 @@ def full_sync(args):
     print(f"\n{'='*60}")
     print("Full sync complete!")
     print(f"{'='*60}")
+
+    # Send Slack notification
+    if not args.dry_run:
+        video_folder_id = project.get("video_folder_id", "")
+        folder_url = f"https://drive.google.com/drive/folders/{video_folder_id}"
+        video_files = get_drive_files(load_token(), video_folder_id) if video_folder_id else []
+        send_slack_notification(project.get("name", project_id), len(video_files), folder_url)
 
     return 0
 
